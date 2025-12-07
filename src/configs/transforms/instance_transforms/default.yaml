@@ -1,0 +1,6 @@
+train:
+  audio_to_mel:
+    _target_: src.text_to_mel.DeterministicModel
+inference:
+  text:
+    _target_: src.text_to_mel.AcousticModel

@@ -54,22 +54,6 @@ class LJSpeechDataset(BaseDataset):
 
         return index
 
-    def __getitem__(self, ind):
-        data_dict = self._index[ind]
-        audio_path = data_dict["path"]
-
-        audio, _ = torchaudio.load(audio_path)
-        audio = audio[0]
-
-        instance_data = {
-            "audio": audio,
-            "audio_id": data_dict["audio_id"],
-            "text": data_dict["text"],
-        }
-
-        instance_data = self.preprocess_data(instance_data)
-        return instance_data
-
     @staticmethod
     def _assert_index_is_valid(index):
         for entry in index:

@@ -2,7 +2,7 @@ import logging
 import random
 from typing import List
 
-import torch
+import torchaudio
 from torch.utils.data import Dataset
 
 logger = logging.getLogger(__name__)
@@ -56,11 +56,24 @@ class BaseDataset(Dataset):
                 (a single dataset element).
         """
         data_dict = self._index[ind]
-        data_path = data_dict["path"]
-        data_object = self.load_object(data_path)
-        data_label = data_dict["label"]
+        audio_path = data_dict["path"]
+        audio = self.load_audio(audio_path)
+        text = data_dict["text"]
 
-        instance_data = {"data_object": data_object, "labels": data_label}
+        if "audio_to_mel" in self.instance_transforms:
+            mel = self.instance_transforms["audio_to_mel"](audio)
+        elif "text_to_mel" in self.instance_transforms:
+            mel = self.instance_transforms["text_to_mel"](text)
+        else:
+            raise ValueError("No audio_to_mel or text_to_mel transform found")
+
+        instance_data = {
+            "audio": audio,
+            "mel": mel,
+            "text": text,
+            "audio_path": audio_path,
+        }
+
         instance_data = self.preprocess_data(instance_data)
 
         return instance_data
@@ -71,17 +84,10 @@ class BaseDataset(Dataset):
         """
         return len(self._index)
 
-    def load_object(self, path):
-        """
-        Load object from disk.
-
-        Args:
-            path (str): path to the object.
-        Returns:
-            data_object (Tensor):
-        """
-        data_object = torch.load(path)
-        return data_object
+    def load_audio(self, path):
+        audio_tensor, sr = torchaudio.load(path)
+        audio_tensor = audio_tensor[0:1, :]  # remove all channels but the first
+        return audio_tensor
 
     def preprocess_data(self, instance_data):
         """
@@ -99,6 +105,8 @@ class BaseDataset(Dataset):
         """
         if self.instance_transforms is not None:
             for transform_name in self.instance_transforms.keys():
+                if transform_name in ("audio_to_mel", "text_to_mel"):
+                    continue  # skip special key
                 instance_data[transform_name] = self.instance_transforms[
                     transform_name
                 ](instance_data[transform_name])
@@ -142,9 +150,8 @@ class BaseDataset(Dataset):
             assert "path" in entry, (
                 "Each dataset item should include field 'path'" " - path to audio file."
             )
-            assert "label" in entry, (
-                "Each dataset item should include field 'label'"
-                " - object ground-truth label."
+            assert "text" in entry, (
+                "Each dataset item should include field 'text'" " - text transcription."
             )
 
     @staticmethod

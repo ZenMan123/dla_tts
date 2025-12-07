@@ -3,9 +3,8 @@ defaults:
   - writer: cometml
   - metrics: example
   - datasets: ljspeech
-  - dataloader: example
-  - transforms: example
-  - text_to_mel: deterministic
+  - dataloader: default
+  - transforms: default
   - _self_
 optimizer:
   _target_: torch.optim.Adam
