@@ -1,0 +1,4 @@
+train:
+  _target_: src.datasets.LJSpeechDataset
+  limit: null
+  shuffle_index: true

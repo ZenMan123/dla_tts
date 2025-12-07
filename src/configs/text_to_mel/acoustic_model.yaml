@@ -1,0 +1,2 @@
+_target_: src.text_to_mel.AcousticModelTextToMel
+device: cuda
