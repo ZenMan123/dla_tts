@@ -1,0 +1,3 @@
+_target_: src.loss.HiFiGANLoss
+audio_to_mel:
+  _target_: src.text_to_mel.DeterministicModel
