@@ -294,8 +294,12 @@ class HiFiGAN(nn.Module):
         self.msd = MultiScaleDiscriminator()
 
     def forward(self, **batch):
-        if len(batch["audio"].shape) < 3:
-            batch["audio"] = batch["audio"].unsqueeze(1)
+        if "audio" in batch:
+            if len(batch["audio"].shape) < 3:
+                batch["audio"] = batch["audio"].unsqueeze(1)
+
+            batch["real_scores_mpd"], batch["real_feats_mpd"] = self.mpd(batch["audio"])
+            batch["real_scores_msd"], batch["real_feats_msd"] = self.msd(batch["audio"])
 
         batch["audio_pred"] = self.generator(batch["mel"])
         batch["audio_pred_detached"] = batch["audio_pred"].clone().detach()
@@ -313,8 +317,5 @@ class HiFiGAN(nn.Module):
         batch["fake_scores_msd_detached"], batch["fake_feats_msd_detached"] = self.msd(
             batch["audio_pred_detached"]
         )
-
-        batch["real_scores_mpd"], batch["real_feats_mpd"] = self.mpd(batch["audio"])
-        batch["real_scores_msd"], batch["real_feats_msd"] = self.msd(batch["audio"])
 
         return batch
