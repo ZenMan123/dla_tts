@@ -1,8 +1,9 @@
 import torch
+import torch.nn as nn
 import torchaudio
 
 
-class DeterministicModel:
+class DeterministicModel(nn.Module):
     def __init__(
         self,
         sample_rate=22050,
@@ -14,6 +15,7 @@ class DeterministicModel:
         f_max=8000,
         power=1.0,
     ):
+        super().__init__()
         self.mel_transform = torchaudio.transforms.MelSpectrogram(
             sample_rate=sample_rate,
             n_fft=n_fft,
