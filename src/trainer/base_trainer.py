@@ -541,13 +541,27 @@ class BaseTrainer:
             pretrained_path (str): path to the model state dict.
         """
         pretrained_path = str(pretrained_path)
-        if hasattr(self, "logger"):  # to support both trainer and inferencer
+        if hasattr(self, "logger"):
             self.logger.info(f"Loading model weights from: {pretrained_path} ...")
         else:
             print(f"Loading model weights from: {pretrained_path} ...")
-        checkpoint = torch.load(pretrained_path, self.device)
 
-        if checkpoint.get("state_dict") is not None:
-            self.model.load_state_dict(checkpoint["state_dict"])
-        else:
-            self.model.load_state_dict(checkpoint)
+        if "/" in pretrained_path and not pretrained_path.endswith(".pth"):
+            from huggingface_hub import hf_hub_download
+
+            pretrained_path = hf_hub_download(
+                repo_id=pretrained_path, filename="model.pth"
+            )
+
+        checkpoint = torch.load(pretrained_path, self.device, weights_only=False)
+
+        state_dict = (
+            checkpoint.get("state_dict")
+            if checkpoint.get("state_dict") is not None
+            else checkpoint
+        )
+
+        # Remove _orig_mod. prefix from torch.compile()
+        state_dict = {k.replace("_orig_mod.", ""): v for k, v in state_dict.items()}
+
+        self.model.load_state_dict(state_dict)

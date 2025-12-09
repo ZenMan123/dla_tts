@@ -1,13 +1,20 @@
 defaults:
-  - model: baseline
-  - metrics: example
-  - datasets: example_eval # we do not want to run inference on training data
-  - dataloader: example
-  - transforms: example
+  - model: hifigan
+  - metrics: empty
+  - datasets: custom_dir
+  - dataloader: default
+  - transforms: default
   - _self_
+
+text: null # provide text via CLI to synthesize single utterance
+
+dataloader:
+  batch_size: 1
+  num_workers: 0
+
 inferencer:
-  device_tensors: ["data_object", "labels"] # which tensors should be on device (ex. GPU)
+  device_tensors: ["mel"]
   device: auto # device name or "auto"
   save_path: "example" # any name here, can be a dataset name
   seed: 1
-  from_pretrained: "saved/model_best.pth" # path to the pretrained model
+  from_pretrained: "ZenMan67/dla_tts" # path to the pretrained model
