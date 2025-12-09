@@ -17,4 +17,5 @@ class AcousticModel(nn.Module):
     def __call__(self, text: str) -> torch.Tensor:
         tokens = self.model.parse(text).to(self.device)
         mel = self.model.generate_spectrogram(tokens=tokens)
+        mel = mel + 4.4
         return mel
