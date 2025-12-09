@@ -14,6 +14,7 @@ class GANTrainer(Trainer):
         optimizer_d,
         lr_scheduler_g: Optional[Any] = None,
         lr_scheduler_d: Optional[Any] = None,
+        accelerator=None,
         **kwargs
     ):
         super().__init__(
@@ -29,6 +30,7 @@ class GANTrainer(Trainer):
         self.optimizer_d = optimizer_d
         self.lr_scheduler_g = lr_scheduler_g
         self.lr_scheduler_d = lr_scheduler_d
+        self.accelerator = accelerator
 
     def process_batch(
         self, batch: Dict[str, Any], metrics: MetricTracker
@@ -49,7 +51,10 @@ class GANTrainer(Trainer):
             batch.update(disc_losses)
 
             loss_d = disc_losses["loss_discriminator"]
-            loss_d.backward()
+            if self.accelerator:
+                self.accelerator.backward(loss_d)
+            else:
+                loss_d.backward()
             self._clip_grad_norm()
             self.optimizer_d.step()
 
@@ -62,7 +67,10 @@ class GANTrainer(Trainer):
             batch.update(gen_losses)
 
             loss_g = gen_losses["loss_generator"]
-            loss_g.backward()
+            if self.accelerator:
+                self.accelerator.backward(loss_g)
+            else:
+                loss_g.backward()
             self._clip_grad_norm()
             self.optimizer_g.step()
 
@@ -80,3 +88,18 @@ class GANTrainer(Trainer):
             metrics.update(met.name, met(**batch))
 
         return batch
+
+    def _log_batch(self, batch_idx, batch, mode="train"):
+        if mode == "train":
+            if batch_idx % self.log_step == 0:
+                self.writer.add_audio(
+                    "audio_real", batch["audio"][0], sample_rate=22050
+                )
+                self.writer.add_audio(
+                    "audio_generated", batch["audio_pred"][0], sample_rate=22050
+                )
+        else:
+            self.writer.add_audio("audio_real", batch["audio"][0], sample_rate=22050)
+            self.writer.add_audio(
+                "audio_generated", batch["audio_pred"][0], sample_rate=22050
+            )

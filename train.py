@@ -2,6 +2,7 @@ import warnings
 
 import hydra
 import torch
+from accelerate import Accelerator
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
@@ -28,17 +29,19 @@ def main(config):
     logger = setup_saving_and_logging(config)
     writer = instantiate(config.writer, logger, project_config)
 
+    accelerator = Accelerator()
+
     if config.trainer.device == "auto":
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        device = accelerator.device
     else:
-        device = config.trainer.device
+        device = torch.device(config.trainer.device)
 
     # setup data_loader instances
     # batch_transforms should be put on device
     dataloaders, batch_transforms = get_dataloaders(config, device)
 
     # build model architecture, then print to console
-    model = instantiate(config.model).to(device)
+    model = instantiate(config.model)
     logger.info(model)
 
     # get function handles of loss and metrics
@@ -59,6 +62,28 @@ def main(config):
     lr_scheduler_g = instantiate(config.lr_scheduler_g, optimizer=optimizer_g)
     lr_scheduler_d = instantiate(config.lr_scheduler_d, optimizer=optimizer_d)
 
+    train_loader = dataloaders["train"]
+
+    prepared = accelerator.prepare(
+        model,
+        optimizer_g,
+        optimizer_d,
+        lr_scheduler_g,
+        lr_scheduler_d,
+        train_loader,
+    )
+
+    (
+        model,
+        optimizer_g,
+        optimizer_d,
+        lr_scheduler_g,
+        lr_scheduler_d,
+        train_loader,
+    ) = prepared
+
+    dataloaders["train"] = train_loader
+
     epoch_len = config.trainer.get("epoch_len")
 
     trainer = GANTrainer(
@@ -77,6 +102,7 @@ def main(config):
         writer=writer,
         batch_transforms=batch_transforms,
         skip_oom=config.trainer.get("skip_oom", True),
+        accelerator=accelerator,
     )
 
     trainer.train()
