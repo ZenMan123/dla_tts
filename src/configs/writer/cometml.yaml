@@ -3,6 +3,15 @@ project_name: "dla_tts"
 workspace: null
 run_name: "testing"
 mode: "online"
-loss_names: ["loss"] # which losses to log (useful for multi-loss tasks, s.a. GANs)
+
+loss_names:
+  - loss_generator
+  - loss_discriminator
+  - loss_mel
+  - loss_adv
+  - loss_fm
+  - loss_mpd
+  - loss_msd
+
 log_checkpoints: False # set to True if you want to log save_dir with checkpoints to W&B
 id_length: 32 # length of the run_id

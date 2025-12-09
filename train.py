@@ -6,13 +6,13 @@ from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
 from src.datasets.data_utils import get_dataloaders
-from src.trainer import Trainer
+from src.trainer.gan_trainer import GANTrainer
 from src.utils.init_utils import set_random_seed, setup_saving_and_logging
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-@hydra.main(version_base=None, config_path="src/configs", config_name="baseline")
+@hydra.main(version_base=None, config_path="src/configs", config_name="train")
 def main(config):
     """
     Main script for training. Instantiates the model, optimizer, scheduler,
@@ -45,21 +45,30 @@ def main(config):
     loss_function = instantiate(config.loss_function).to(device)
     metrics = instantiate(config.metrics)
 
-    # build optimizer, learning rate scheduler
-    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = instantiate(config.optimizer, params=trainable_params)
-    lr_scheduler = instantiate(config.lr_scheduler, optimizer=optimizer)
+    optimizer_g = instantiate(
+        config.optimizer_g,
+        params=model.generator.parameters(),
+    )
 
-    # epoch_len = number of iterations for iteration-based training
-    # epoch_len = None or len(dataloader) for epoch-based training
+    disc_params = list(model.mpd.parameters()) + list(model.msd.parameters())
+    optimizer_d = instantiate(
+        config.optimizer_d,
+        params=disc_params,
+    )
+
+    lr_scheduler_g = instantiate(config.lr_scheduler_g, optimizer=optimizer_g)
+    lr_scheduler_d = instantiate(config.lr_scheduler_d, optimizer=optimizer_d)
+
     epoch_len = config.trainer.get("epoch_len")
 
-    trainer = Trainer(
+    trainer = GANTrainer(
         model=model,
         criterion=loss_function,
         metrics=metrics,
-        optimizer=optimizer,
-        lr_scheduler=lr_scheduler,
+        optimizer_g=optimizer_g,
+        optimizer_d=optimizer_d,
+        lr_scheduler_g=lr_scheduler_g,
+        lr_scheduler_d=lr_scheduler_d,
         config=config,
         device=device,
         dataloaders=dataloaders,
